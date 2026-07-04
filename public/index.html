@@ -460,6 +460,81 @@
       document.getElementById('dow-breakdown').innerHTML = renderBreakdownRows(breakdown, order);
     }
 
+    function requireToken() {
+      var token = localStorage.getItem(GIST_TOKEN_KEY);
+      if (!token) {
+        token = document.getElementById('set-gist-token').value.trim();
+        if (token) localStorage.setItem(GIST_TOKEN_KEY, token);
+      }
+      return token;
+    }
+
+    function setGistStatus(message) {
+      document.getElementById('gist-status').textContent = message;
+    }
+
+    function exportToGist() {
+      var token = requireToken();
+      if (!token) { setGistStatus('Enter a GitHub token above first.'); return; }
+      var payload = { sessions: getSessions(), settings: getSettings() };
+      var body = {
+        description: 'DashRate data export',
+        public: false,
+        files: { 'dashrate-data.json': { content: JSON.stringify(payload, null, 2) } }
+      };
+      var gistId = localStorage.getItem(GIST_ID_KEY);
+      var url = gistId ? 'https://api.github.com/gists/' + gistId : 'https://api.github.com/gists';
+      var method = gistId ? 'PATCH' : 'POST';
+      setGistStatus('Exporting…');
+      fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }).then(function (response) {
+        if (!response.ok) throw new Error('GitHub API returned ' + response.status);
+        return response.json();
+      }).then(function (data) {
+        localStorage.setItem(GIST_ID_KEY, data.id);
+        document.getElementById('set-gist-id').value = data.id;
+        setGistStatus('Exported to Gist ' + data.id + ' at ' + new Date().toLocaleTimeString());
+      }).catch(function (error) {
+        setGistStatus('Export failed: ' + error.message);
+      });
+    }
+
+    function importFromGist() {
+      var token = requireToken();
+      var gistId = localStorage.getItem(GIST_ID_KEY) || document.getElementById('set-gist-id').value.trim();
+      if (!token) { setGistStatus('Enter a GitHub token above first.'); return; }
+      if (!gistId) { setGistStatus('No Gist ID set — paste the one from your other device above.'); return; }
+      localStorage.setItem(GIST_ID_KEY, gistId);
+      setGistStatus('Importing…');
+      fetch('https://api.github.com/gists/' + gistId, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+      }).then(function (response) {
+        if (!response.ok) throw new Error('GitHub API returned ' + response.status);
+        return response.json();
+      }).then(function (data) {
+        var content = data.files['dashrate-data.json'].content;
+        var payload = JSON.parse(content);
+        saveSessions(payload.sessions || []);
+        saveSettings(Object.assign({}, DEFAULT_SETTINGS, payload.settings || {}));
+        setGistStatus('Imported ' + (payload.sessions || []).length + ' sessions.');
+        fillSettingsForm();
+        renderHistory();
+        resetLogForm();
+      }).catch(function (error) {
+        setGistStatus('Import failed: ' + error.message);
+      });
+    }
+
+    document.getElementById('export-gist-btn').addEventListener('click', exportToGist);
+    document.getElementById('import-gist-btn').addEventListener('click', importFromGist);
+
     resetLogForm();
     showTab('log');
   })();
