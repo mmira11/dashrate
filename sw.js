@@ -1,5 +1,5 @@
-var CACHE_NAME = 'dashrate-v1';
-var APP_SHELL = ['./', './index.html', './manifest.json'];
+var CACHE_NAME = 'dashrate-v2';
+var APP_SHELL = ['./', './index.html', './manifest.json', './calc.js'];
 
 self.addEventListener('install', function (event) {
   event.waitUntil(
