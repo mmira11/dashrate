@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>DashRate</title>
+<link rel="manifest" href="./manifest.json">
+<style>
+  :root {
+    --bg: #0b0e14;
+    --surface: #161a24;
+    --surface-2: #1e2330;
+    --text: #f2f3f7;
+    --text-dim: #9aa0ac;
+    --accent: #8b5cf6;
+    --green: #2fd675;
+    --red: #ff4d5e;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: 76px;
+  }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; position: sticky; top: 0; background: var(--bg); z-index: 10;
+  }
+  header h1 { font-size: 20px; margin: 0; }
+  .icon-btn {
+    background: var(--surface); border: none; color: var(--text);
+    width: 40px; height: 40px; border-radius: 12px; font-size: 18px;
+  }
+  main { padding: 0 16px; }
+  .view { display: none; animation: fadeIn 0.2s ease; }
+  .view.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: translateY(0);} }
+  .card {
+    background: var(--surface); border-radius: var(--radius);
+    padding: 16px; margin-bottom: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  }
+  label { display: block; font-size: 13px; color: var(--text-dim); margin: 12px 0 6px; }
+  input, select {
+    width: 100%; padding: 14px; border-radius: 12px; border: 1px solid #2a2f3d;
+    background: var(--surface-2); color: var(--text); font-size: 16px;
+  }
+  .btn-primary {
+    width: 100%; padding: 16px; border: none; border-radius: 14px;
+    background: var(--accent); color: white; font-size: 17px; font-weight: 600;
+    margin-top: 16px;
+  }
+  .btn-secondary {
+    width: 100%; padding: 14px; border: none; border-radius: 14px;
+    background: var(--surface-2); color: var(--text); font-size: 15px; font-weight: 600;
+    margin-top: 10px;
+  }
+  .preview-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 15px; }
+  .preview-row .label { color: var(--text-dim); }
+  .flag-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+  .flag-green { background: var(--green); }
+  .flag-red { background: var(--red); }
+  .session-card { border-left: 4px solid var(--text-dim); }
+  .session-card.green { border-left-color: var(--green); }
+  .session-card.red { border-left-color: var(--red); }
+  nav.tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; display: flex;
+    background: var(--surface); border-top: 1px solid #23283a;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  }
+  nav.tabbar button {
+    flex: 1; background: none; border: none; color: var(--text-dim);
+    font-size: 13px; padding: 8px 0;
+  }
+  nav.tabbar button.active { color: var(--accent); font-weight: 600; }
+  .sheet-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; align-items: flex-end; z-index: 20;
+  }
+  .sheet-overlay.active { display: flex; }
+  .sheet {
+    background: var(--surface); width: 100%; border-radius: 20px 20px 0 0;
+    padding: 20px; max-height: 85vh; overflow-y: auto;
+  }
+  .week-switcher { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .week-switcher button { background: var(--surface-2); border: none; color: var(--text); width: 40px; height: 40px; border-radius: 10px; font-size: 16px; }
+  table.breakdown { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  table.breakdown td { padding: 8px 4px; font-size: 14px; border-bottom: 1px solid #23283a; }
+  table.breakdown td:last-child { text-align: right; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>DashRate</h1>
+    <button class="icon-btn" id="settings-btn" aria-label="Settings">&#9881;</button>
+  </header>
+  <main>
+    <section id="log-view" class="view active">
+      <div class="card">
+        <label for="log-date">Date</label>
+        <input type="date" id="log-date">
+
+        <label for="log-vehicle">Vehicle</label>
+        <select id="log-vehicle">
+          <option value="Tesla">Tesla</option>
+          <option value="Jeep">Jeep</option>
+        </select>
+
+        <label for="log-start">Start time</label>
+        <input type="time" id="log-start">
+
+        <label for="log-end">End time</label>
+        <input type="time" id="log-end">
+
+        <label for="log-active">Active minutes</label>
+        <input type="number" inputmode="numeric" id="log-active" placeholder="0">
+
+        <label for="log-miles">Miles driven</label>
+        <input type="number" step="0.1" inputmode="decimal" id="log-miles" placeholder="0">
+
+        <label for="log-dd-pay">DoorDash pay ($)</label>
+        <input type="number" step="0.01" inputmode="decimal" id="log-dd-pay" placeholder="0">
+
+        <label for="log-tips">Tips ($)</label>
+        <input type="number" step="0.01" inputmode="decimal" id="log-tips" placeholder="0">
+      </div>
+
+      <div class="card" id="log-preview">
+        <div class="preview-row"><span class="label">Net pay</span><span id="preview-net">$0.00</span></div>
+        <div class="preview-row"><span class="label">$/hr active</span><span id="preview-rate-active">$0.00</span></div>
+        <div class="preview-row"><span class="label">$/hr total</span><span id="preview-rate-total">$0.00</span></div>
+        <div class="preview-row"><span class="label">Worth it?</span><span id="preview-flag"><span class="flag-dot"></span>&mdash;</span></div>
+      </div>
+
+      <button class="btn-primary" id="save-session-btn">Save Session</button>
+    </section>
+    <section id="history-view" class="view">
+      <div class="week-switcher">
+        <button id="week-prev">&#9664;</button>
+        <div id="week-label">This week</div>
+        <button id="week-next">&#9654;</button>
+      </div>
+      <div class="card" id="weekly-summary"></div>
+      <div id="session-list"></div>
+      <div class="card">
+        <h3>By time of day</h3>
+        <table class="breakdown" id="bucket-breakdown"></table>
+      </div>
+      <div class="card">
+        <h3>By day of week</h3>
+        <table class="breakdown" id="dow-breakdown"></table>
+      </div>
+    </section>
+  </main>
+  <nav class="tabbar">
+    <button id="tab-log" class="active">Log</button>
+    <button id="tab-history">History</button>
+  </nav>
+  <div class="sheet-overlay" id="settings-overlay">
+    <div class="sheet" id="settings-sheet">
+      <h2>Settings</h2>
+      <label for="set-tesla-cost">Tesla cost per mile ($)</label>
+      <input type="number" step="0.001" inputmode="decimal" id="set-tesla-cost">
+
+      <label for="set-jeep-mode">Jeep cost mode</label>
+      <select id="set-jeep-mode">
+        <option value="calculated">Calculate from MPG + gas price</option>
+        <option value="override">Manual override</option>
+      </select>
+
+      <label for="set-jeep-mpg">Jeep MPG</label>
+      <input type="number" step="0.1" inputmode="decimal" id="set-jeep-mpg">
+
+      <label for="set-gas-price">Gas price ($/gal)</label>
+      <input type="number" step="0.01" inputmode="decimal" id="set-gas-price">
+
+      <label for="set-jeep-override">Jeep cost per mile override ($)</label>
+      <input type="number" step="0.001" inputmode="decimal" id="set-jeep-override">
+
+      <label for="set-threshold">Worth-it threshold ($/hr)</label>
+      <input type="number" step="0.5" inputmode="decimal" id="set-threshold">
+
+      <label for="set-gist-token">GitHub token (Gists scope)</label>
+      <input type="password" id="set-gist-token" placeholder="paste once, stored locally">
+
+      <label for="set-gist-id">Gist ID (for import on a new device)</label>
+      <input type="text" id="set-gist-id" placeholder="paste from another device's export">
+
+      <button class="btn-primary" id="settings-save-btn">Save Settings</button>
+      <button class="btn-secondary" id="export-gist-btn">Export to Gist</button>
+      <button class="btn-secondary" id="import-gist-btn">Import from Gist</button>
+      <div id="gist-status" style="font-size:13px;color:var(--text-dim);margin-top:8px;"></div>
+    </div>
+  </div>
+  <script src="./calc.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var SESSIONS_KEY = 'dashrate_sessions';
+    var SETTINGS_KEY = 'dashrate_settings';
+    var GIST_TOKEN_KEY = 'dashrate_gist_token';
+    var GIST_ID_KEY = 'dashrate_gist_id';
+
+    var DEFAULT_SETTINGS = {
+      teslaCostPerMile: 0.045,
+      jeepMode: 'calculated',
+      jeepMpg: 18,
+      gasPrice: 3.50,
+      jeepCostPerMileOverride: 0.2,
+      worthItThreshold: 18,
+      lastVehicle: 'Tesla'
+    };
+
+    function getSettings() {
+      var raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return Object.assign({}, DEFAULT_SETTINGS);
+      return Object.assign({}, DEFAULT_SETTINGS, JSON.parse(raw));
+    }
+
+    function saveSettings(settings) {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
+
+    function getSessions() {
+      var raw = localStorage.getItem(SESSIONS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }
+
+    function saveSessions(sessions) {
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+    }
+
+    // --- TAB NAVIGATION ---
+    var tabLogBtn = document.getElementById('tab-log');
+    var tabHistoryBtn = document.getElementById('tab-history');
+    var logView = document.getElementById('log-view');
+    var historyView = document.getElementById('history-view');
+
+    function showTab(name) {
+      var isLog = name === 'log';
+      logView.classList.toggle('active', isLog);
+      historyView.classList.toggle('active', !isLog);
+      tabLogBtn.classList.toggle('active', isLog);
+      tabHistoryBtn.classList.toggle('active', !isLog);
+      if (!isLog) renderHistory();
+    }
+
+    tabLogBtn.addEventListener('click', function () { showTab('log'); });
+    tabHistoryBtn.addEventListener('click', function () { showTab('history'); });
+
+    // --- SETTINGS SHEET ---
+    var settingsBtn = document.getElementById('settings-btn');
+    var settingsOverlay = document.getElementById('settings-overlay');
+
+    function fillSettingsForm() {
+      var s = getSettings();
+      document.getElementById('set-tesla-cost').value = s.teslaCostPerMile;
+      document.getElementById('set-jeep-mode').value = s.jeepMode;
+      document.getElementById('set-jeep-mpg').value = s.jeepMpg;
+      document.getElementById('set-gas-price').value = s.gasPrice;
+      document.getElementById('set-jeep-override').value = s.jeepCostPerMileOverride;
+      document.getElementById('set-threshold').value = s.worthItThreshold;
+      document.getElementById('set-gist-token').value = localStorage.getItem(GIST_TOKEN_KEY) || '';
+      document.getElementById('set-gist-id').value = localStorage.getItem(GIST_ID_KEY) || '';
+    }
+
+    settingsBtn.addEventListener('click', function () {
+      fillSettingsForm();
+      settingsOverlay.classList.add('active');
+    });
+
+    settingsOverlay.addEventListener('click', function (event) {
+      if (event.target === settingsOverlay) settingsOverlay.classList.remove('active');
+    });
+
+    document.getElementById('settings-save-btn').addEventListener('click', function () {
+      var settings = {
+        teslaCostPerMile: parseFloat(document.getElementById('set-tesla-cost').value) || 0,
+        jeepMode: document.getElementById('set-jeep-mode').value,
+        jeepMpg: parseFloat(document.getElementById('set-jeep-mpg').value) || 0,
+        gasPrice: parseFloat(document.getElementById('set-gas-price').value) || 0,
+        jeepCostPerMileOverride: parseFloat(document.getElementById('set-jeep-override').value) || 0,
+        worthItThreshold: parseFloat(document.getElementById('set-threshold').value) || 0,
+        lastVehicle: getSettings().lastVehicle
+      };
+      saveSettings(settings);
+      var token = document.getElementById('set-gist-token').value.trim();
+      if (token) localStorage.setItem(GIST_TOKEN_KEY, token);
+      var gistId = document.getElementById('set-gist-id').value.trim();
+      if (gistId) localStorage.setItem(GIST_ID_KEY, gistId);
+      settingsOverlay.classList.remove('active');
+    });
+
+    // --- SERVICE WORKER ---
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+
+    function todayDateString() {
+      var d = new Date();
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    var logDate = document.getElementById('log-date');
+    var logVehicle = document.getElementById('log-vehicle');
+    var logStart = document.getElementById('log-start');
+    var logEnd = document.getElementById('log-end');
+    var logActive = document.getElementById('log-active');
+    var logMiles = document.getElementById('log-miles');
+    var logDdPay = document.getElementById('log-dd-pay');
+    var logTips = document.getElementById('log-tips');
+
+    function currentCostPerMile(settings, vehicle) {
+      return vehicle === 'Tesla' ? settings.teslaCostPerMile : DashRateCalc.computeJeepCostPerMile(settings);
+    }
+
+    function updatePreview() {
+      var settings = getSettings();
+      var vehicle = logVehicle.value;
+      var session = {
+        startTime: logStart.value || '00:00',
+        endTime: logEnd.value || '00:00',
+        activeMinutes: parseFloat(logActive.value) || 0,
+        miles: parseFloat(logMiles.value) || 0,
+        ddPay: parseFloat(logDdPay.value) || 0,
+        tips: parseFloat(logTips.value) || 0,
+        costPerMileSnapshot: currentCostPerMile(settings, vehicle),
+        thresholdSnapshot: settings.worthItThreshold
+      };
+      var result = DashRateCalc.computeSession(session);
+      document.getElementById('preview-net').textContent = '$' + result.netPay.toFixed(2);
+      document.getElementById('preview-rate-active').textContent = '$' + result.rateActive.toFixed(2);
+      document.getElementById('preview-rate-total').textContent = '$' + result.rateTotal.toFixed(2);
+      var flagEl = document.getElementById('preview-flag');
+      flagEl.innerHTML = '<span class="flag-dot flag-' + result.flag + '"></span>' + (result.flag === 'green' ? 'Worth it' : 'Not worth it');
+    }
+
+    [logStart, logEnd, logActive, logMiles, logDdPay, logTips, logVehicle].forEach(function (el) {
+      el.addEventListener('input', updatePreview);
+    });
+
+    function resetLogForm() {
+      var settings = getSettings();
+      logDate.value = todayDateString();
+      logVehicle.value = settings.lastVehicle;
+      logStart.value = '';
+      logEnd.value = '';
+      logActive.value = '';
+      logMiles.value = '';
+      logDdPay.value = '';
+      logTips.value = '';
+      updatePreview();
+    }
+
+    document.getElementById('save-session-btn').addEventListener('click', function () {
+      var settings = getSettings();
+      var vehicle = logVehicle.value;
+      var session = {
+        id: String(Date.now()),
+        date: logDate.value || todayDateString(),
+        vehicle: vehicle,
+        startTime: logStart.value || '00:00',
+        endTime: logEnd.value || '00:00',
+        activeMinutes: parseFloat(logActive.value) || 0,
+        miles: parseFloat(logMiles.value) || 0,
+        ddPay: parseFloat(logDdPay.value) || 0,
+        tips: parseFloat(logTips.value) || 0,
+        costPerMileSnapshot: currentCostPerMile(settings, vehicle),
+        thresholdSnapshot: settings.worthItThreshold
+      };
+      var sessions = getSessions();
+      sessions.push(session);
+      saveSessions(sessions);
+      settings.lastVehicle = vehicle;
+      saveSettings(settings);
+      resetLogForm();
+    });
+    var currentWeekAnchor = todayDateString();
+
+    function renderSessionCard(session) {
+      var result = DashRateCalc.computeSession(session);
+      return '<div class="card session-card ' + result.flag + '">' +
+        '<div class="preview-row"><span>' + session.date + ' &middot; ' + session.vehicle + '</span><span>' + session.startTime + '&ndash;' + session.endTime + '</span></div>' +
+        '<div class="preview-row"><span class="label">Net</span><span>$' + result.netPay.toFixed(2) + '</span></div>' +
+        '<div class="preview-row"><span class="label">$/hr total</span><span>$' + result.rateTotal.toFixed(2) + '</span></div>' +
+        '<button class="btn-secondary" data-delete-id="' + session.id + '">Delete</button>' +
+        '</div>';
+    }
+
+    function renderHistory() {
+      var sessions = getSessions().slice().sort(function (a, b) {
+        return (b.date + b.startTime).localeCompare(a.date + a.startTime);
+      });
+
+      var range = DashRateCalc.getWeekRange(currentWeekAnchor);
+      document.getElementById('week-label').textContent = range.start + ' – ' + range.end;
+
+      var weekSessions = sessions.filter(function (s) { return s.date >= range.start && s.date <= range.end; });
+      var summary = DashRateCalc.summarizeSessions(weekSessions);
+      document.getElementById('weekly-summary').innerHTML =
+        '<div class="preview-row"><span class="label">Gross</span><span>$' + summary.totalGross.toFixed(2) + '</span></div>' +
+        '<div class="preview-row"><span class="label">Net</span><span>$' + summary.totalNet.toFixed(2) + '</span></div>' +
+        '<div class="preview-row"><span class="label">Hours</span><span>' + summary.totalHours.toFixed(1) + '</span></div>' +
+        '<div class="preview-row"><span class="label">Blended $/hr</span><span>$' + summary.blendedRate.toFixed(2) + '</span></div>';
+
+      document.getElementById('session-list').innerHTML = sessions.map(renderSessionCard).join('');
+
+      document.querySelectorAll('[data-delete-id]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var id = btn.getAttribute('data-delete-id');
+          var remaining = getSessions().filter(function (s) { return s.id !== id; });
+          saveSessions(remaining);
+          renderHistory();
+        });
+      });
+
+      renderBucketBreakdown(sessions);
+      renderDowBreakdown(sessions);
+    }
+
+    function shiftWeek(days) {
+      var parts = currentWeekAnchor.split('-').map(Number);
+      var d = new Date(parts[0], parts[1] - 1, parts[2] + days);
+      currentWeekAnchor = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      renderHistory();
+    }
+
+    document.getElementById('week-prev').addEventListener('click', function () { shiftWeek(-7); });
+    document.getElementById('week-next').addEventListener('click', function () { shiftWeek(7); });
+
+    function renderBreakdownRows(map, order) {
+      return order.map(function (key) {
+        var value = map[key];
+        var display = value === null || value === undefined ? '—' : '$' + value.toFixed(2);
+        return '<tr><td>' + key + '</td><td>' + display + '</td></tr>';
+      }).join('');
+    }
+
+    function renderBucketBreakdown(sessions) {
+      var breakdown = DashRateCalc.breakdownByBucket(sessions);
+      document.getElementById('bucket-breakdown').innerHTML =
+        renderBreakdownRows(breakdown, ['morning', 'afternoon', 'evening']);
+    }
+
+    function renderDowBreakdown(sessions) {
+      var breakdown = DashRateCalc.breakdownByDayOfWeek(sessions);
+      var order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      document.getElementById('dow-breakdown').innerHTML = renderBreakdownRows(breakdown, order);
+    }
+
+    function requireToken() {
+      var token = localStorage.getItem(GIST_TOKEN_KEY);
+      if (!token) {
+        token = document.getElementById('set-gist-token').value.trim();
+        if (token) localStorage.setItem(GIST_TOKEN_KEY, token);
+      }
+      return token;
+    }
+
+    function setGistStatus(message) {
+      document.getElementById('gist-status').textContent = message;
+    }
+
+    function exportToGist() {
+      var token = requireToken();
+      if (!token) { setGistStatus('Enter a GitHub token above first.'); return; }
+      var payload = { sessions: getSessions(), settings: getSettings() };
+      var body = {
+        description: 'DashRate data export',
+        public: false,
+        files: { 'dashrate-data.json': { content: JSON.stringify(payload, null, 2) } }
+      };
+      var gistId = localStorage.getItem(GIST_ID_KEY);
+      var url = gistId ? 'https://api.github.com/gists/' + gistId : 'https://api.github.com/gists';
+      var method = gistId ? 'PATCH' : 'POST';
+      setGistStatus('Exporting…');
+      fetch(url, {
+        method: method,
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/vnd.github+json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      }).then(function (response) {
+        if (!response.ok) throw new Error('GitHub API returned ' + response.status);
+        return response.json();
+      }).then(function (data) {
+        localStorage.setItem(GIST_ID_KEY, data.id);
+        document.getElementById('set-gist-id').value = data.id;
+        setGistStatus('Exported to Gist ' + data.id + ' at ' + new Date().toLocaleTimeString());
+      }).catch(function (error) {
+        setGistStatus('Export failed: ' + error.message);
+      });
+    }
+
+    function importFromGist() {
+      var token = requireToken();
+      var gistId = localStorage.getItem(GIST_ID_KEY) || document.getElementById('set-gist-id').value.trim();
+      if (!token) { setGistStatus('Enter a GitHub token above first.'); return; }
+      if (!gistId) { setGistStatus('No Gist ID set — paste the one from your other device above.'); return; }
+      localStorage.setItem(GIST_ID_KEY, gistId);
+      setGistStatus('Importing…');
+      fetch('https://api.github.com/gists/' + gistId, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json' }
+      }).then(function (response) {
+        if (!response.ok) throw new Error('GitHub API returned ' + response.status);
+        return response.json();
+      }).then(function (data) {
+        var content = data.files['dashrate-data.json'].content;
+        var payload = JSON.parse(content);
+        saveSessions(payload.sessions || []);
+        saveSettings(Object.assign({}, DEFAULT_SETTINGS, payload.settings || {}));
+        setGistStatus('Imported ' + (payload.sessions || []).length + ' sessions.');
+        fillSettingsForm();
+        renderHistory();
+        resetLogForm();
+      }).catch(function (error) {
+        setGistStatus('Import failed: ' + error.message);
+      });
+    }
+
+    document.getElementById('export-gist-btn').addEventListener('click', exportToGist);
+    document.getElementById('import-gist-btn').addEventListener('click', importFromGist);
+
+    resetLogForm();
+    showTab('log');
+  })();
+  </script>
+</body>
+</html>
