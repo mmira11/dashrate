@@ -129,6 +129,36 @@
     return result;
   }
 
+  function breakdownByVehicle(sessions) {
+    var groups = { Tesla: [], Jeep: [] };
+    sessions.forEach(function (s) { groups[s.vehicle].push(s); });
+    return {
+      Tesla: averageRateTotal(groups.Tesla),
+      Jeep: averageRateTotal(groups.Jeep)
+    };
+  }
+
+  function weeklyTrend(sessions, weekCount, anchorDate) {
+    var weeks = [];
+    var cursor = anchorDate;
+    for (var i = 0; i < weekCount; i++) {
+      weeks.unshift(getWeekRange(cursor));
+      var parts = parseDateParts(cursor);
+      var d = new Date(parts.year, parts.month - 1, parts.day - 7);
+      cursor = formatDate(d);
+    }
+    return weeks.map(function (range) {
+      var weekSessions = sessions.filter(function (s) { return s.date >= range.start && s.date <= range.end; });
+      var summary = summarizeSessions(weekSessions);
+      return {
+        weekStart: range.start,
+        weekEnd: range.end,
+        blendedRate: summary.blendedRate,
+        hasData: weekSessions.length > 0
+      };
+    });
+  }
+
   return {
     parseTimeToMinutes: parseTimeToMinutes,
     computeLoggedMinutes: computeLoggedMinutes,
@@ -139,6 +169,8 @@
     getWeekRange: getWeekRange,
     summarizeSessions: summarizeSessions,
     breakdownByBucket: breakdownByBucket,
-    breakdownByDayOfWeek: breakdownByDayOfWeek
+    breakdownByDayOfWeek: breakdownByDayOfWeek,
+    breakdownByVehicle: breakdownByVehicle,
+    weeklyTrend: weeklyTrend
   };
 });

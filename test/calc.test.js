@@ -185,3 +185,47 @@ test('breakdownByDayOfWeek averages rateTotal across multiple sessions on the sa
   assert.equal(result.Tuesday, null);
   assert.equal(result.Sunday, null);
 });
+
+test('breakdownByVehicle averages rateTotal per vehicle and returns null for a vehicle with no sessions', () => {
+  const { computeSession, breakdownByVehicle } = require('../public/calc.js');
+  const teslaSession = { vehicle: 'Tesla', startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const tesla = computeSession(teslaSession);
+  const result = breakdownByVehicle([teslaSession]);
+  assert.equal(result.Tesla, tesla.rateTotal);
+  assert.equal(result.Jeep, null);
+});
+
+test('breakdownByVehicle averages across multiple sessions of the same vehicle', () => {
+  const { computeSession, breakdownByVehicle } = require('../public/calc.js');
+  const jeepSession1 = { vehicle: 'Jeep', startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.18, thresholdSnapshot: 18, date: '2026-06-29' };
+  const jeepSession2 = { vehicle: 'Jeep', startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.18, thresholdSnapshot: 18, date: '2026-06-30' };
+  const a = computeSession(jeepSession1);
+  const b = computeSession(jeepSession2);
+  const result = breakdownByVehicle([jeepSession1, jeepSession2]);
+  assert.equal(result.Jeep, (a.rateTotal + b.rateTotal) / 2);
+  assert.equal(result.Tesla, null);
+});
+
+test('weeklyTrend returns weekCount weeks ordered oldest-to-newest, anchored on the given date', () => {
+  const { weeklyTrend } = require('../public/calc.js');
+  const result = weeklyTrend([], 2, '2026-07-03');
+  assert.deepEqual(result, [
+    { weekStart: '2026-06-22', weekEnd: '2026-06-28', blendedRate: 0, hasData: false },
+    { weekStart: '2026-06-29', weekEnd: '2026-07-05', blendedRate: 0, hasData: false }
+  ]);
+});
+
+test('weeklyTrend reports hasData and the correct blended rate for weeks with sessions', () => {
+  const { summarizeSessions, weeklyTrend } = require('../public/calc.js');
+  const olderWeekSession = { vehicle: 'Tesla', startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-23' };
+  const newerWeekSession = { vehicle: 'Tesla', startTime: '08:00', endTime: '10:00', activeMinutes: 90, miles: 10, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-30' };
+  const olderSummary = summarizeSessions([olderWeekSession]);
+  const newerSummary = summarizeSessions([newerWeekSession]);
+  const result = weeklyTrend([olderWeekSession, newerWeekSession], 2, '2026-07-03');
+  assert.equal(result[0].weekStart, '2026-06-22');
+  assert.equal(result[0].hasData, true);
+  assert.equal(result[0].blendedRate, olderSummary.blendedRate);
+  assert.equal(result[1].weekStart, '2026-06-29');
+  assert.equal(result[1].hasData, true);
+  assert.equal(result[1].blendedRate, newerSummary.blendedRate);
+});
