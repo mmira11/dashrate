@@ -94,6 +94,13 @@
   table.breakdown { width: 100%; border-collapse: collapse; margin-top: 8px; }
   table.breakdown td { padding: 8px 4px; font-size: 14px; border-bottom: 1px solid #23283a; }
   table.breakdown td:last-child { text-align: right; }
+  .bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 140px; padding: 12px 4px 0; }
+  .bar-chart .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+  .bar-chart .bar { width: 100%; max-width: 32px; border-radius: 6px 6px 0 0; background: #3a3f4d; }
+  .bar-chart .bar.green { background: var(--green); }
+  .bar-chart .bar.red { background: var(--red); }
+  .bar-chart .bar-value { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .bar-chart .bar-label { font-size: 11px; color: var(--text-dim); margin-top: 6px; text-align: center; }
 </style>
 </head>
 <body>
@@ -159,10 +166,25 @@
         <table class="breakdown" id="dow-breakdown"></table>
       </div>
     </section>
+    <section id="analytics-view" class="view">
+      <div class="card">
+        <h3>By day of week</h3>
+        <div class="bar-chart" id="chart-dow"></div>
+      </div>
+      <div class="card">
+        <h3>Weekly trend</h3>
+        <div class="bar-chart" id="chart-trend"></div>
+      </div>
+      <div class="card">
+        <h3>Tesla vs Jeep</h3>
+        <div class="bar-chart" id="chart-vehicle"></div>
+      </div>
+    </section>
   </main>
   <nav class="tabbar">
     <button id="tab-log" class="active">Log</button>
     <button id="tab-history">History</button>
+    <button id="tab-analytics">Analytics</button>
   </nav>
   <div class="sheet-overlay" id="settings-overlay">
     <div class="sheet" id="settings-sheet">
@@ -242,20 +264,25 @@
     // --- TAB NAVIGATION ---
     var tabLogBtn = document.getElementById('tab-log');
     var tabHistoryBtn = document.getElementById('tab-history');
+    var tabAnalyticsBtn = document.getElementById('tab-analytics');
     var logView = document.getElementById('log-view');
     var historyView = document.getElementById('history-view');
+    var analyticsView = document.getElementById('analytics-view');
 
     function showTab(name) {
-      var isLog = name === 'log';
-      logView.classList.toggle('active', isLog);
-      historyView.classList.toggle('active', !isLog);
-      tabLogBtn.classList.toggle('active', isLog);
-      tabHistoryBtn.classList.toggle('active', !isLog);
-      if (!isLog) renderHistory();
+      logView.classList.toggle('active', name === 'log');
+      historyView.classList.toggle('active', name === 'history');
+      analyticsView.classList.toggle('active', name === 'analytics');
+      tabLogBtn.classList.toggle('active', name === 'log');
+      tabHistoryBtn.classList.toggle('active', name === 'history');
+      tabAnalyticsBtn.classList.toggle('active', name === 'analytics');
+      if (name === 'history') renderHistory();
+      if (name === 'analytics') renderAnalytics();
     }
 
     tabLogBtn.addEventListener('click', function () { showTab('log'); });
     tabHistoryBtn.addEventListener('click', function () { showTab('history'); });
+    tabAnalyticsBtn.addEventListener('click', function () { showTab('analytics'); });
 
     // --- SETTINGS SHEET ---
     var settingsBtn = document.getElementById('settings-btn');
@@ -525,6 +552,58 @@
       document.getElementById('dow-breakdown').innerHTML = renderBreakdownRows(breakdown, order);
     }
 
+    function renderBarChart(containerId, items) {
+      var threshold = getSettings().worthItThreshold;
+      var maxValue = items.reduce(function (max, item) {
+        return item.hasData && item.value > max ? item.value : max;
+      }, 0);
+      var html = items.map(function (item) {
+        var heightPct = item.hasData && maxValue > 0 ? Math.max(4, (item.value / maxValue) * 100) : 4;
+        var barClass = !item.hasData ? '' : (item.value >= threshold ? 'green' : 'red');
+        var valueLabel = item.hasData ? '$' + item.value.toFixed(2) : '—';
+        return '<div class="bar-col">' +
+          '<div class="bar-value">' + valueLabel + '</div>' +
+          '<div class="bar ' + barClass + '" style="height:' + heightPct + '%"></div>' +
+          '<div class="bar-label">' + item.label + '</div>' +
+          '</div>';
+      }).join('');
+      document.getElementById(containerId).innerHTML = html;
+    }
+
+    function renderDowChart(sessions) {
+      var breakdown = DashRateCalc.breakdownByDayOfWeek(sessions);
+      var order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      var items = order.map(function (day) {
+        var value = breakdown[day];
+        return { label: day.slice(0, 3), value: value === null ? 0 : value, hasData: value !== null };
+      });
+      renderBarChart('chart-dow', items);
+    }
+
+    function renderTrendChart(sessions) {
+      var trend = DashRateCalc.weeklyTrend(sessions, 8, todayDateString());
+      var items = trend.map(function (week) {
+        return { label: week.weekStart.slice(5), value: week.blendedRate, hasData: week.hasData };
+      });
+      renderBarChart('chart-trend', items);
+    }
+
+    function renderVehicleChart(sessions) {
+      var breakdown = DashRateCalc.breakdownByVehicle(sessions);
+      var items = ['Tesla', 'Jeep'].map(function (vehicle) {
+        var value = breakdown[vehicle];
+        return { label: vehicle, value: value === null ? 0 : value, hasData: value !== null };
+      });
+      renderBarChart('chart-vehicle', items);
+    }
+
+    function renderAnalytics() {
+      var sessions = getSessions();
+      renderDowChart(sessions);
+      renderTrendChart(sessions);
+      renderVehicleChart(sessions);
+    }
+
     function requireToken() {
       var token = localStorage.getItem(GIST_TOKEN_KEY);
       if (!token) {
@@ -591,6 +670,7 @@
         setGistStatus('Imported ' + (payload.sessions || []).length + ' sessions.');
         fillSettingsForm();
         renderHistory();
+        renderAnalytics();
         resetLogForm();
         stopEditingSession();
       }).catch(function (error) {
