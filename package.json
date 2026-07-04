@@ -1,0 +1,14 @@
+{
+  "name": "dashrate",
+  "version": "1.0.0",
+  "private": true,
+  "homepage": "https://mmira11.github.io/dashrate",
+  "scripts": {
+    "test": "node --test",
+    "start": "npx serve public",
+    "deploy": "gh-pages -d public"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
+  }
+}
