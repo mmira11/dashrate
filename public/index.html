@@ -440,8 +440,25 @@
     document.getElementById('week-prev').addEventListener('click', function () { shiftWeek(-7); });
     document.getElementById('week-next').addEventListener('click', function () { shiftWeek(7); });
 
-    function renderBucketBreakdown(sessions) { /* implemented in Task 8 */ }
-    function renderDowBreakdown(sessions) { /* implemented in Task 8 */ }
+    function renderBreakdownRows(map, order) {
+      return order.map(function (key) {
+        var value = map[key];
+        var display = value === null || value === undefined ? '—' : '$' + value.toFixed(2);
+        return '<tr><td>' + key + '</td><td>' + display + '</td></tr>';
+      }).join('');
+    }
+
+    function renderBucketBreakdown(sessions) {
+      var breakdown = DashRateCalc.breakdownByBucket(sessions);
+      document.getElementById('bucket-breakdown').innerHTML =
+        renderBreakdownRows(breakdown, ['morning', 'afternoon', 'evening']);
+    }
+
+    function renderDowBreakdown(sessions) {
+      var breakdown = DashRateCalc.breakdownByDayOfWeek(sessions);
+      var order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      document.getElementById('dow-breakdown').innerHTML = renderBreakdownRows(breakdown, order);
+    }
 
     resetLogForm();
     showTab('log');
