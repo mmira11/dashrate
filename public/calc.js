@@ -31,9 +31,29 @@
     return settings.gasPrice / settings.jeepMpg;
   }
 
+  function computeSession(session) {
+    var totalLoggedMinutes = computeLoggedMinutes(session.startTime, session.endTime);
+    var grossPay = session.ddPay + session.tips;
+    var energyCost = session.miles * session.costPerMileSnapshot;
+    var netPay = grossPay - energyCost;
+    var rateActive = session.activeMinutes > 0 ? netPay / (session.activeMinutes / 60) : 0;
+    var rateTotal = totalLoggedMinutes > 0 ? netPay / (totalLoggedMinutes / 60) : 0;
+    var flag = rateTotal >= session.thresholdSnapshot ? 'green' : 'red';
+    return {
+      totalLoggedMinutes: totalLoggedMinutes,
+      grossPay: grossPay,
+      energyCost: energyCost,
+      netPay: netPay,
+      rateActive: rateActive,
+      rateTotal: rateTotal,
+      flag: flag
+    };
+  }
+
   return {
     parseTimeToMinutes: parseTimeToMinutes,
     computeLoggedMinutes: computeLoggedMinutes,
-    computeJeepCostPerMile: computeJeepCostPerMile
+    computeJeepCostPerMile: computeJeepCostPerMile,
+    computeSession: computeSession
   };
 });
