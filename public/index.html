@@ -387,7 +387,14 @@
       saveSettings(settings);
       resetLogForm();
     });
-    var currentWeekAnchor = todayDateString();
+    var currentWeekAnchor = (function () {
+      var sessions = getSessions();
+      if (!sessions.length) return todayDateString();
+      // Same ordering as renderHistory()'s sort: most-recent-first by date + startTime.
+      return sessions.reduce(function (latest, s) {
+        return (s.date + s.startTime) > (latest.date + latest.startTime) ? s : latest;
+      }).date;
+    })();
 
     function renderSessionCard(session) {
       var result = DashRateCalc.computeSession(session);
