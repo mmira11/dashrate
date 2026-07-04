@@ -140,6 +140,7 @@
       </div>
 
       <button class="btn-primary" id="save-session-btn">Save Session</button>
+      <button class="btn-secondary" id="cancel-edit-btn" style="display:none;">Cancel</button>
     </section>
     <section id="history-view" class="view">
       <div class="week-switcher">
@@ -351,6 +352,8 @@
       el.addEventListener('input', updatePreview);
     });
 
+    var editingSessionId = null;
+
     function resetLogForm() {
       var settings = getSettings();
       logDate.value = todayDateString();
@@ -364,11 +367,38 @@
       updatePreview();
     }
 
+    function fillFormFromSession(session) {
+      logDate.value = session.date;
+      logVehicle.value = session.vehicle;
+      logStart.value = session.startTime;
+      logEnd.value = session.endTime;
+      logActive.value = session.activeMinutes;
+      logMiles.value = session.miles;
+      logDdPay.value = session.ddPay;
+      logTips.value = session.tips;
+      updatePreview();
+    }
+
+    function startEditingSession(id) {
+      var match = getSessions().filter(function (s) { return s.id === id; });
+      if (!match.length) return;
+      editingSessionId = id;
+      fillFormFromSession(match[0]);
+      document.getElementById('save-session-btn').textContent = 'Update Session';
+      document.getElementById('cancel-edit-btn').style.display = 'block';
+      showTab('log');
+    }
+
+    function stopEditingSession() {
+      editingSessionId = null;
+      document.getElementById('save-session-btn').textContent = 'Save Session';
+      document.getElementById('cancel-edit-btn').style.display = 'none';
+    }
+
     document.getElementById('save-session-btn').addEventListener('click', function () {
       var settings = getSettings();
       var vehicle = logVehicle.value;
-      var session = {
-        id: String(Date.now()),
+      var sessionData = {
         date: logDate.value || todayDateString(),
         vehicle: vehicle,
         startTime: logStart.value || '00:00',
@@ -380,12 +410,33 @@
         costPerMileSnapshot: currentCostPerMile(settings, vehicle),
         thresholdSnapshot: settings.worthItThreshold
       };
-      var sessions = getSessions();
-      sessions.push(session);
-      saveSessions(sessions);
       settings.lastVehicle = vehicle;
       saveSettings(settings);
+
+      var sessions = getSessions();
+      if (editingSessionId) {
+        var editedId = editingSessionId;
+        sessions = sessions.map(function (s) {
+          if (s.id !== editedId) return s;
+          sessionData.id = s.id;
+          return sessionData;
+        });
+        saveSessions(sessions);
+        stopEditingSession();
+        resetLogForm();
+        showTab('history');
+      } else {
+        sessionData.id = String(Date.now());
+        sessions.push(sessionData);
+        saveSessions(sessions);
+        resetLogForm();
+      }
+    });
+
+    document.getElementById('cancel-edit-btn').addEventListener('click', function () {
+      stopEditingSession();
       resetLogForm();
+      showTab('history');
     });
     var currentWeekAnchor = (function () {
       var sessions = getSessions();
@@ -402,6 +453,7 @@
         '<div class="preview-row"><span>' + session.date + ' &middot; ' + session.vehicle + '</span><span>' + session.startTime + '&ndash;' + session.endTime + '</span></div>' +
         '<div class="preview-row"><span class="label">Net</span><span>$' + result.netPay.toFixed(2) + '</span></div>' +
         '<div class="preview-row"><span class="label">$/hr total</span><span>$' + result.rateTotal.toFixed(2) + '</span></div>' +
+        '<button class="btn-secondary" data-edit-id="' + session.id + '">Edit</button>' +
         '<button class="btn-secondary" data-delete-id="' + session.id + '">Delete</button>' +
         '</div>';
     }
@@ -423,6 +475,12 @@
         '<div class="preview-row"><span class="label">Blended $/hr</span><span>$' + summary.blendedRate.toFixed(2) + '</span></div>';
 
       document.getElementById('session-list').innerHTML = sessions.map(renderSessionCard).join('');
+
+      document.querySelectorAll('[data-edit-id]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          startEditingSession(btn.getAttribute('data-edit-id'));
+        });
+      });
 
       document.querySelectorAll('[data-delete-id]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -534,6 +592,7 @@
         fillSettingsForm();
         renderHistory();
         resetLogForm();
+        stopEditingSession();
       }).catch(function (error) {
         setGistStatus('Import failed: ' + error.message);
       });
