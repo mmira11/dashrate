@@ -159,3 +159,29 @@ test('breakdownByDayOfWeek averages rateTotal per weekday and returns null for d
   assert.equal(result.Tuesday, null);
   assert.equal(result.Sunday, null);
 });
+
+test('breakdownByBucket averages rateTotal across multiple sessions in the same bucket', () => {
+  const { computeSession, breakdownByBucket } = require('../public/calc.js');
+  const morningSession1 = { startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const morningSession2 = { startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const morning1 = computeSession(morningSession1);
+  const morning2 = computeSession(morningSession2);
+  const expectedAverage = (morning1.rateTotal + morning2.rateTotal) / 2;
+  const result = breakdownByBucket([morningSession1, morningSession2]);
+  assert.equal(result.morning, expectedAverage);
+  assert.equal(result.afternoon, null);
+  assert.equal(result.evening, null);
+});
+
+test('breakdownByDayOfWeek averages rateTotal across multiple sessions on the same weekday', () => {
+  const { computeSession, breakdownByDayOfWeek } = require('../public/calc.js');
+  const mondaySession1 = { startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const mondaySession2 = { startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const monday1 = computeSession(mondaySession1);
+  const monday2 = computeSession(mondaySession2);
+  const expectedAverage = (monday1.rateTotal + monday2.rateTotal) / 2;
+  const result = breakdownByDayOfWeek([mondaySession1, mondaySession2]);
+  assert.equal(result.Monday, expectedAverage);
+  assert.equal(result.Tuesday, null);
+  assert.equal(result.Sunday, null);
+});
