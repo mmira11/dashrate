@@ -102,7 +102,45 @@
     <button class="icon-btn" id="settings-btn" aria-label="Settings">&#9881;</button>
   </header>
   <main>
-    <section id="log-view" class="view active"></section>
+    <section id="log-view" class="view active">
+      <div class="card">
+        <label for="log-date">Date</label>
+        <input type="date" id="log-date">
+
+        <label for="log-vehicle">Vehicle</label>
+        <select id="log-vehicle">
+          <option value="Tesla">Tesla</option>
+          <option value="Jeep">Jeep</option>
+        </select>
+
+        <label for="log-start">Start time</label>
+        <input type="time" id="log-start">
+
+        <label for="log-end">End time</label>
+        <input type="time" id="log-end">
+
+        <label for="log-active">Active minutes</label>
+        <input type="number" inputmode="numeric" id="log-active" placeholder="0">
+
+        <label for="log-miles">Miles driven</label>
+        <input type="number" step="0.1" inputmode="decimal" id="log-miles" placeholder="0">
+
+        <label for="log-dd-pay">DoorDash pay ($)</label>
+        <input type="number" step="0.01" inputmode="decimal" id="log-dd-pay" placeholder="0">
+
+        <label for="log-tips">Tips ($)</label>
+        <input type="number" step="0.01" inputmode="decimal" id="log-tips" placeholder="0">
+      </div>
+
+      <div class="card" id="log-preview">
+        <div class="preview-row"><span class="label">Net pay</span><span id="preview-net">$0.00</span></div>
+        <div class="preview-row"><span class="label">$/hr active</span><span id="preview-rate-active">$0.00</span></div>
+        <div class="preview-row"><span class="label">$/hr total</span><span id="preview-rate-total">$0.00</span></div>
+        <div class="preview-row"><span class="label">Worth it?</span><span id="preview-flag"><span class="flag-dot"></span>&mdash;</span></div>
+      </div>
+
+      <button class="btn-primary" id="save-session-btn">Save Session</button>
+    </section>
     <section id="history-view" class="view"></section>
   </main>
   <nav class="tabbar">
@@ -250,9 +288,92 @@
       navigator.serviceWorker.register('./sw.js');
     }
 
-    function resetLogForm() { /* implemented in Task 6 */ }
+    function todayDateString() {
+      var d = new Date();
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    }
+
+    function pad2(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    var logDate = document.getElementById('log-date');
+    var logVehicle = document.getElementById('log-vehicle');
+    var logStart = document.getElementById('log-start');
+    var logEnd = document.getElementById('log-end');
+    var logActive = document.getElementById('log-active');
+    var logMiles = document.getElementById('log-miles');
+    var logDdPay = document.getElementById('log-dd-pay');
+    var logTips = document.getElementById('log-tips');
+
+    function currentCostPerMile(settings, vehicle) {
+      return vehicle === 'Tesla' ? settings.teslaCostPerMile : DashRateCalc.computeJeepCostPerMile(settings);
+    }
+
+    function updatePreview() {
+      var settings = getSettings();
+      var vehicle = logVehicle.value;
+      var session = {
+        startTime: logStart.value || '00:00',
+        endTime: logEnd.value || '00:00',
+        activeMinutes: parseFloat(logActive.value) || 0,
+        miles: parseFloat(logMiles.value) || 0,
+        ddPay: parseFloat(logDdPay.value) || 0,
+        tips: parseFloat(logTips.value) || 0,
+        costPerMileSnapshot: currentCostPerMile(settings, vehicle),
+        thresholdSnapshot: settings.worthItThreshold
+      };
+      var result = DashRateCalc.computeSession(session);
+      document.getElementById('preview-net').textContent = '$' + result.netPay.toFixed(2);
+      document.getElementById('preview-rate-active').textContent = '$' + result.rateActive.toFixed(2);
+      document.getElementById('preview-rate-total').textContent = '$' + result.rateTotal.toFixed(2);
+      var flagEl = document.getElementById('preview-flag');
+      flagEl.innerHTML = '<span class="flag-dot flag-' + result.flag + '"></span>' + (result.flag === 'green' ? 'Worth it' : 'Not worth it');
+    }
+
+    [logStart, logEnd, logActive, logMiles, logDdPay, logTips, logVehicle].forEach(function (el) {
+      el.addEventListener('input', updatePreview);
+    });
+
+    function resetLogForm() {
+      var settings = getSettings();
+      logDate.value = todayDateString();
+      logVehicle.value = settings.lastVehicle;
+      logStart.value = '';
+      logEnd.value = '';
+      logActive.value = '';
+      logMiles.value = '';
+      logDdPay.value = '';
+      logTips.value = '';
+      updatePreview();
+    }
+
+    document.getElementById('save-session-btn').addEventListener('click', function () {
+      var settings = getSettings();
+      var vehicle = logVehicle.value;
+      var session = {
+        id: String(Date.now()),
+        date: logDate.value || todayDateString(),
+        vehicle: vehicle,
+        startTime: logStart.value,
+        endTime: logEnd.value,
+        activeMinutes: parseFloat(logActive.value) || 0,
+        miles: parseFloat(logMiles.value) || 0,
+        ddPay: parseFloat(logDdPay.value) || 0,
+        tips: parseFloat(logTips.value) || 0,
+        costPerMileSnapshot: currentCostPerMile(settings, vehicle),
+        thresholdSnapshot: settings.worthItThreshold
+      };
+      var sessions = getSessions();
+      sessions.push(session);
+      saveSessions(sessions);
+      settings.lastVehicle = vehicle;
+      saveSettings(settings);
+      resetLogForm();
+    });
     function renderHistory() { /* implemented in Task 7 */ }
 
+    resetLogForm();
     showTab('log');
   })();
   </script>
