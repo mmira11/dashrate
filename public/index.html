@@ -592,6 +592,7 @@
         fillSettingsForm();
         renderHistory();
         resetLogForm();
+        stopEditingSession();
       }).catch(function (error) {
         setGistStatus('Import failed: ' + error.message);
       });
