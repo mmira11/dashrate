@@ -38,6 +38,7 @@
     var netPay = grossPay - energyCost;
     var rateActive = session.activeMinutes > 0 ? netPay / (session.activeMinutes / 60) : 0;
     var rateTotal = totalLoggedMinutes > 0 ? netPay / (totalLoggedMinutes / 60) : 0;
+    var ratePerMile = session.miles > 0 ? netPay / session.miles : 0;
     var flag = rateTotal >= session.thresholdSnapshot ? 'green' : 'red';
     return {
       totalLoggedMinutes: totalLoggedMinutes,
@@ -46,6 +47,7 @@
       netPay: netPay,
       rateActive: rateActive,
       rateTotal: rateTotal,
+      ratePerMile: ratePerMile,
       flag: flag
     };
   }
@@ -138,6 +140,18 @@
     };
   }
 
+  function breakdownByDate(sessions) {
+    var groups = {};
+    sessions.forEach(function (s) {
+      if (!groups[s.date]) groups[s.date] = { date: s.date, net: 0, hours: 0, sessionCount: 0 };
+      var c = computeSession(s);
+      groups[s.date].net += c.netPay;
+      groups[s.date].hours += c.totalLoggedMinutes / 60;
+      groups[s.date].sessionCount += 1;
+    });
+    return Object.keys(groups).sort().map(function (date) { return groups[date]; });
+  }
+
   function weeklyTrend(sessions, weekCount, anchorDate) {
     var weeks = [];
     var cursor = anchorDate;
@@ -171,6 +185,7 @@
     breakdownByBucket: breakdownByBucket,
     breakdownByDayOfWeek: breakdownByDayOfWeek,
     breakdownByVehicle: breakdownByVehicle,
+    breakdownByDate: breakdownByDate,
     weeklyTrend: weeklyTrend
   };
 });

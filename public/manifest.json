@@ -6,6 +6,14 @@
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
   "orientation": "portrait",
+  "shortcuts": [
+    {
+      "name": "Log Session",
+      "short_name": "Log",
+      "url": "./?tab=log",
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
   "icons": [
     {
       "src": "./icons/icon-192.png",

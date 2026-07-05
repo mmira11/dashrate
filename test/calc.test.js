@@ -206,6 +206,39 @@ test('breakdownByVehicle averages across multiple sessions of the same vehicle',
   assert.equal(result.Tesla, null);
 });
 
+test('computeSession computes ratePerMile as net pay per mile, 0 when miles is 0', () => {
+  const { computeSession } = require('../public/calc.js');
+  const session = { startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18 };
+  const result = computeSession(session);
+  assert.equal(result.ratePerMile, result.netPay / 20);
+  const noMiles = computeSession(Object.assign({}, session, { miles: 0 }));
+  assert.equal(noMiles.ratePerMile, 0);
+});
+
+test('breakdownByDate groups sessions by date with net, hours, and count, sorted ascending', () => {
+  const { computeSession, breakdownByDate } = require('../public/calc.js');
+  const tueSession = { startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-30' };
+  const monSession1 = { startTime: '08:00', endTime: '09:00', activeMinutes: 60, miles: 5, ddPay: 20, tips: 5, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const monSession2 = { startTime: '18:00', endTime: '20:00', activeMinutes: 100, miles: 30, ddPay: 30, tips: 12, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };
+  const mon1 = computeSession(monSession1);
+  const mon2 = computeSession(monSession2);
+  const tue = computeSession(tueSession);
+  const result = breakdownByDate([tueSession, monSession1, monSession2]);
+  assert.equal(result.length, 2);
+  assert.equal(result[0].date, '2026-06-29');
+  assert.equal(result[0].net, mon1.netPay + mon2.netPay);
+  assert.equal(result[0].hours, (mon1.totalLoggedMinutes + mon2.totalLoggedMinutes) / 60);
+  assert.equal(result[0].sessionCount, 2);
+  assert.equal(result[1].date, '2026-06-30');
+  assert.equal(result[1].net, tue.netPay);
+  assert.equal(result[1].sessionCount, 1);
+});
+
+test('breakdownByDate returns an empty array for no sessions', () => {
+  const { breakdownByDate } = require('../public/calc.js');
+  assert.deepEqual(breakdownByDate([]), []);
+});
+
 test('weeklyTrend returns weekCount weeks ordered oldest-to-newest, anchored on the given date', () => {
   const { weeklyTrend } = require('../public/calc.js');
   const result = weeklyTrend([], 2, '2026-07-03');
