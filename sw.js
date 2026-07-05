@@ -1,4 +1,4 @@
-var CACHE_NAME = 'dashrate-v4';
+var CACHE_NAME = 'dashrate-v5';
 var APP_SHELL = ['./', './index.html', './manifest.json', './calc.js', './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', function (event) {
@@ -18,6 +18,8 @@ self.addEventListener('activate', function (event) {
 });
 
 self.addEventListener('fetch', function (event) {
+  if (event.request.method !== 'GET') return;
+  if (new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(
     fetch(event.request).then(function (response) {
       var copy = response.clone();
