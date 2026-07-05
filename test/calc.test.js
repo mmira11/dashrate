@@ -120,6 +120,13 @@ test('getWeekRange treats the Sunday itself as the end of its own week, not the 
   assert.deepEqual(getWeekRange('2026-07-05'), { start: '2026-06-29', end: '2026-07-05' });
 });
 
+test('getMonthRange returns the first and last day of the containing calendar month', () => {
+  const { getMonthRange } = require('../public/calc.js');
+  assert.deepEqual(getMonthRange('2026-07-15'), { start: '2026-07-01', end: '2026-07-31' });
+  assert.deepEqual(getMonthRange('2026-02-10'), { start: '2026-02-01', end: '2026-02-28' });
+  assert.deepEqual(getMonthRange('2026-12-31'), { start: '2026-12-01', end: '2026-12-31' });
+});
+
 test('summarizeSessions aggregates gross, net, hours, and blended rate across sessions', () => {
   const { computeSession, summarizeSessions } = require('../public/calc.js');
   const sessionA = { startTime: '10:00', endTime: '12:00', activeMinutes: 90, miles: 20, ddPay: 25, tips: 10, costPerMileSnapshot: 0.045, thresholdSnapshot: 18, date: '2026-06-29' };

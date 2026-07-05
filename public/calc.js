@@ -90,6 +90,13 @@
     return { start: formatDate(monday), end: formatDate(sunday) };
   }
 
+  function getMonthRange(dateStr) {
+    var parts = parseDateParts(dateStr);
+    var first = new Date(parts.year, parts.month - 1, 1);
+    var last = new Date(parts.year, parts.month, 0);
+    return { start: formatDate(first), end: formatDate(last) };
+  }
+
   function summarizeSessions(sessions) {
     if (sessions.length === 0) {
       return { totalGross: 0, totalNet: 0, totalHours: 0, blendedRate: 0 };
@@ -181,6 +188,7 @@
     bucketForTime: bucketForTime,
     dayOfWeek: dayOfWeek,
     getWeekRange: getWeekRange,
+    getMonthRange: getMonthRange,
     summarizeSessions: summarizeSessions,
     breakdownByBucket: breakdownByBucket,
     breakdownByDayOfWeek: breakdownByDayOfWeek,

@@ -29,13 +29,15 @@
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-tap-highlight-color: transparent;
-    padding-bottom: 76px;
+    padding-bottom: 88px;
   }
   header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 16px 20px; position: sticky; top: 0; background: var(--bg); z-index: 10;
   }
-  header h1 { font-size: 20px; margin: 0; }
+  header h1 { font-size: 20px; margin: 0; letter-spacing: -0.3px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand svg { display: block; }
   .icon-btn {
     background: var(--surface); border: none; color: var(--text);
     width: 40px; height: 40px; border-radius: 12px; font-size: 18px;
@@ -47,7 +49,43 @@
   .card {
     background: var(--surface); border-radius: var(--radius);
     padding: 16px; margin-bottom: 12px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    border: 1px solid #1f2434;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+  }
+  .card h3 {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-dim); margin: 0 0 12px;
+  }
+  .preview-row span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .stat-value, .hero-rate { font-variant-numeric: tabular-nums; }
+  .card-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .card-actions button {
+    background: var(--surface-2); border: none; color: var(--text);
+    font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 9px;
+  }
+  .card-actions button.danger { color: var(--red); }
+  .segmented {
+    display: flex; background: var(--surface); border: 1px solid #1f2434;
+    border-radius: 12px; padding: 4px; margin-bottom: 12px;
+  }
+  .segmented button {
+    flex: 1; border: none; background: none; color: var(--text-dim);
+    padding: 8px 0; border-radius: 9px; font-size: 14px; font-weight: 600;
+  }
+  .segmented button.active { background: var(--surface-2); color: var(--text); }
+  .empty-state { text-align: center; color: var(--text-dim); font-size: 14px; padding: 24px 16px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  .sheet::before {
+    content: ''; display: block; width: 36px; height: 4px; border-radius: 2px;
+    background: #2a2f3d; margin: 0 auto 14px;
+  }
+  .sheet h2 { font-size: 18px; margin: 0 0 4px; }
+  .sheet-section {
+    font-size: 12px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--accent); margin: 22px 0 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
   }
   label { display: block; font-size: 13px; color: var(--text-dim); margin: 12px 0 6px; }
   input, select {
@@ -79,9 +117,11 @@
   }
   nav.tabbar button {
     flex: 1; background: none; border: none; color: var(--text-dim);
-    font-size: 13px; padding: 8px 0;
+    font-size: 11px; font-weight: 600; padding: 6px 0 2px;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
   }
-  nav.tabbar button.active { color: var(--accent); font-weight: 600; }
+  nav.tabbar button svg { display: block; }
+  nav.tabbar button.active { color: var(--accent); }
   .hero-card { text-align: center; padding: 28px 16px 24px; }
   .hero-label { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
   .hero-rate { font-size: 56px; font-weight: 700; letter-spacing: -1.5px; margin: 6px 0 12px; }
@@ -133,7 +173,13 @@
 </head>
 <body>
   <header>
-    <h1>DashRate</h1>
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true">
+        <polyline points="72,380 200,268 288,330 420,182" fill="none" stroke="#8b5cf6" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="420" cy="182" r="46" fill="#2fd675"/>
+      </svg>
+      <h1>DashRate</h1>
+    </div>
     <button class="icon-btn" id="settings-btn" aria-label="Settings">&#9881;</button>
   </header>
   <main>
@@ -193,10 +239,14 @@
       <button class="btn-secondary" id="cancel-edit-btn" style="display:none;">Cancel</button>
     </section>
     <section id="history-view" class="view">
+      <div class="segmented" id="period-toggle">
+        <button class="active" data-period="week">Week</button>
+        <button data-period="month">Month</button>
+      </div>
       <div class="week-switcher">
-        <button id="week-prev">&#9664;</button>
+        <button id="week-prev" aria-label="Previous period">&#9664;</button>
         <div id="week-label">This week</div>
-        <button id="week-next">&#9654;</button>
+        <button id="week-next" aria-label="Next period">&#9654;</button>
       </div>
       <div class="card" id="weekly-summary"></div>
       <div class="card">
@@ -225,14 +275,27 @@
     </section>
   </main>
   <nav class="tabbar">
-    <button id="tab-home" class="active">Home</button>
-    <button id="tab-log">Log</button>
-    <button id="tab-history">History</button>
-    <button id="tab-analytics">Analytics</button>
+    <button id="tab-home" class="active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+      <span>Home</span>
+    </button>
+    <button id="tab-log">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      <span>Log</span>
+    </button>
+    <button id="tab-history">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>History</span>
+    </button>
+    <button id="tab-analytics">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8M12 20V5M19 20v-11"/></svg>
+      <span>Analytics</span>
+    </button>
   </nav>
   <div class="sheet-overlay" id="settings-overlay">
     <div class="sheet" id="settings-sheet">
       <h2>Settings</h2>
+      <div class="sheet-section">Vehicle costs</div>
       <label for="set-tesla-cost">Tesla cost per mile ($)</label>
       <input type="number" step="0.001" inputmode="decimal" id="set-tesla-cost">
 
@@ -251,9 +314,11 @@
       <label for="set-jeep-override">Jeep cost per mile override ($)</label>
       <input type="number" step="0.001" inputmode="decimal" id="set-jeep-override">
 
+      <div class="sheet-section">Worth it</div>
       <label for="set-threshold">Worth-it threshold ($/hr)</label>
       <input type="number" step="0.5" inputmode="decimal" id="set-threshold">
 
+      <div class="sheet-section">Backup &amp; data</div>
       <label for="set-gist-token">GitHub token (Gists scope)</label>
       <input type="password" id="set-gist-token" placeholder="paste once, stored locally">
 
@@ -271,7 +336,7 @@
     <span id="undo-toast-msg">Session deleted</span>
     <button id="undo-btn">Undo</button>
   </div>
-  <script src="./calc.js"></script>
+  <script src="./calc.js?v=6"></script>
   <script>
   (function () {
     'use strict';
@@ -384,6 +449,7 @@
       if (gistId) localStorage.setItem(GIST_ID_KEY, gistId);
       else localStorage.removeItem(GIST_ID_KEY);
       settingsOverlay.classList.remove('active');
+      showToast('Settings saved');
       if (homeView.classList.contains('active')) renderHome();
     });
 
@@ -399,6 +465,18 @@
 
     function pad2(n) {
       return n < 10 ? '0' + n : '' + n;
+    }
+
+    var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    function shortDate(dateStr) {
+      var parts = dateStr.split('-');
+      return MONTH_NAMES[parseInt(parts[1], 10) - 1].slice(0, 3) + ' ' + parseInt(parts[2], 10);
+    }
+
+    function dayLabel(dateStr) {
+      return DashRateCalc.dayOfWeek(dateStr).slice(0, 3) + ', ' + shortDate(dateStr);
     }
 
     var logDate = document.getElementById('log-date');
@@ -512,11 +590,13 @@
         stopEditingSession();
         resetLogForm();
         showTab('history');
+        showToast('Session updated');
       } else {
         sessionData.id = String(Date.now());
         sessions.push(sessionData);
         saveSessions(sessions);
         resetLogForm();
+        showToast('Session saved');
       }
       scheduleAutoBackup();
     });
@@ -534,6 +614,32 @@
         return (s.date + s.startTime) > (latest.date + latest.startTime) ? s : latest;
       }).date;
     })();
+
+    var periodMode = 'week';
+
+    function currentPeriodRange() {
+      return periodMode === 'week'
+        ? DashRateCalc.getWeekRange(currentWeekAnchor)
+        : DashRateCalc.getMonthRange(currentWeekAnchor);
+    }
+
+    function periodLabel(range) {
+      if (periodMode === 'month') {
+        var parts = range.start.split('-');
+        return MONTH_NAMES[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+      }
+      return shortDate(range.start) + ' – ' + shortDate(range.end);
+    }
+
+    document.querySelectorAll('#period-toggle button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        periodMode = btn.getAttribute('data-period');
+        document.querySelectorAll('#period-toggle button').forEach(function (b) {
+          b.classList.toggle('active', b === btn);
+        });
+        renderHistory();
+      });
+    });
 
     function renderHome() {
       var settings = getSettings();
@@ -583,13 +689,14 @@
     function renderSessionCard(session) {
       var result = DashRateCalc.computeSession(session);
       return '<div class="card session-card ' + result.flag + '">' +
-        '<div class="preview-row"><span>' + session.date + ' &middot; ' + session.vehicle + '</span><span>' + session.startTime + '&ndash;' + session.endTime + '</span></div>' +
+        '<div class="preview-row"><span>' + dayLabel(session.date) + ' &middot; ' + session.vehicle + '</span><span>' + session.startTime + '&ndash;' + session.endTime + '</span></div>' +
         '<div class="preview-row"><span class="label">Net</span><span>$' + result.netPay.toFixed(2) + '</span></div>' +
         '<div class="preview-row"><span class="label">$/hr total</span><span>$' + result.rateTotal.toFixed(2) + '</span></div>' +
         '<div class="preview-row"><span class="label">$/mile</span><span>$' + result.ratePerMile.toFixed(2) + '</span></div>' +
-        '<button class="btn-secondary" data-edit-id="' + session.id + '">Edit</button>' +
-        '<button class="btn-secondary" data-delete-id="' + session.id + '">Delete</button>' +
-        '</div>';
+        '<div class="card-actions">' +
+        '<button data-edit-id="' + session.id + '">Edit</button>' +
+        '<button class="danger" data-delete-id="' + session.id + '">Delete</button>' +
+        '</div></div>';
     }
 
     function renderHistory() {
@@ -597,8 +704,8 @@
         return (b.date + b.startTime).localeCompare(a.date + a.startTime);
       });
 
-      var range = DashRateCalc.getWeekRange(currentWeekAnchor);
-      document.getElementById('week-label').textContent = range.start + ' – ' + range.end;
+      var range = currentPeriodRange();
+      document.getElementById('week-label').textContent = periodLabel(range);
 
       var weekSessions = sessions.filter(function (s) { return s.date >= range.start && s.date <= range.end; });
       var summary = DashRateCalc.summarizeSessions(weekSessions);
@@ -612,7 +719,9 @@
         '<div class="preview-row"><span class="label">$/mile</span><span>$' + ratePerMile.toFixed(2) + '</span></div>';
 
       renderDailyNet(weekSessions);
-      document.getElementById('session-list').innerHTML = weekSessions.map(renderSessionCard).join('');
+      document.getElementById('session-list').innerHTML = weekSessions.length
+        ? weekSessions.map(renderSessionCard).join('')
+        : '<div class="card empty-state">No sessions this ' + periodMode + '. Log one to see it here.</div>';
 
       document.querySelectorAll('[data-edit-id]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -627,7 +736,7 @@
           var deleted = all.filter(function (s) { return s.id === id; })[0];
           saveSessions(all.filter(function (s) { return s.id !== id; }));
           renderHistory();
-          if (deleted) showUndoToast(deleted);
+          if (deleted) showToast('Session deleted', deleted);
           scheduleAutoBackup();
         });
       });
@@ -643,7 +752,7 @@
       el.innerHTML = days.map(function (d) {
         var cls = d.net >= 0 ? 'pos' : 'neg';
         var sign = d.net >= 0 ? '+' : '−';
-        var label = DashRateCalc.dayOfWeek(d.date).slice(0, 3) + ' ' + d.date.slice(5) +
+        var label = dayLabel(d.date) +
           ' · ' + d.sessionCount + (d.sessionCount === 1 ? ' session' : ' sessions') +
           ' · ' + d.hours.toFixed(1) + 'h';
         return '<div class="preview-row"><span class="label">' + label + '</span>' +
@@ -655,11 +764,13 @@
     var pendingUndoSession = null;
     var undoToastTimer = null;
 
-    function showUndoToast(session) {
-      pendingUndoSession = session;
+    function showToast(message, undoSession) {
+      document.getElementById('undo-toast-msg').textContent = message;
+      document.getElementById('undo-btn').style.display = undoSession ? 'block' : 'none';
+      pendingUndoSession = undoSession || null;
       undoToastEl.classList.add('active');
       clearTimeout(undoToastTimer);
-      undoToastTimer = setTimeout(hideUndoToast, 6000);
+      undoToastTimer = setTimeout(hideUndoToast, undoSession ? 6000 : 2500);
     }
 
     function hideUndoToast() {
@@ -677,15 +788,17 @@
       scheduleAutoBackup();
     });
 
-    function shiftWeek(days) {
+    function shiftPeriod(direction) {
       var parts = currentWeekAnchor.split('-').map(Number);
-      var d = new Date(parts[0], parts[1] - 1, parts[2] + days);
+      var d = periodMode === 'week'
+        ? new Date(parts[0], parts[1] - 1, parts[2] + direction * 7)
+        : new Date(parts[0], parts[1] - 1 + direction, 1);
       currentWeekAnchor = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
       renderHistory();
     }
 
-    document.getElementById('week-prev').addEventListener('click', function () { shiftWeek(-7); });
-    document.getElementById('week-next').addEventListener('click', function () { shiftWeek(7); });
+    document.getElementById('week-prev').addEventListener('click', function () { shiftPeriod(-1); });
+    document.getElementById('week-next').addEventListener('click', function () { shiftPeriod(1); });
 
     function renderBarChart(containerId, items) {
       var threshold = getSettings().worthItThreshold;
@@ -821,12 +934,21 @@
           c.netPay.toFixed(2), c.rateTotal.toFixed(2), c.rateActive.toFixed(2), c.ratePerMile.toFixed(2),
           c.flag === 'green' ? 'yes' : 'no'].join(',');
       });
-      var blob = new Blob([columns.join(',') + '\n' + rows.join('\n') + '\n'], { type: 'text/csv' });
+      var csv = columns.join(',') + '\n' + rows.join('\n') + '\n';
+      var file = new File([csv], 'dashrate-sessions.csv', { type: 'text/csv' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: 'DashRate sessions' }).catch(function () {});
+        return;
+      }
       var link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
+      link.href = URL.createObjectURL(file);
       link.download = 'dashrate-sessions.csv';
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(link.href);
+      setTimeout(function () {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }, 1000);
     }
 
     document.getElementById('export-csv-btn').addEventListener('click', exportCsv);
@@ -844,6 +966,9 @@
         if (!response.ok) throw new Error('GitHub API returned ' + response.status);
         return response.json();
       }).then(function (data) {
+        if (!data.files || !data.files['dashrate-data.json']) {
+          throw new Error('that Gist has no dashrate-data.json file — check the Gist ID');
+        }
         var content = data.files['dashrate-data.json'].content;
         var payload = JSON.parse(content);
         saveSessions(payload.sessions || []);
