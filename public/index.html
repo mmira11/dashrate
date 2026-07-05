@@ -8,6 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>DashRate</title>
 <link rel="manifest" href="./manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <style>
   :root {
     --bg: #0b0e14;
@@ -80,6 +82,22 @@
     font-size: 13px; padding: 8px 0;
   }
   nav.tabbar button.active { color: var(--accent); font-weight: 600; }
+  .hero-card { text-align: center; padding: 28px 16px 24px; }
+  .hero-label { font-size: 13px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .hero-rate { font-size: 56px; font-weight: 700; letter-spacing: -1.5px; margin: 6px 0 12px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 16px; border-radius: 999px;
+    font-size: 14px; font-weight: 600;
+    background: var(--surface-2); color: var(--text-dim);
+  }
+  .status-pill.green { background: rgba(47,214,117,0.14); color: var(--green); }
+  .status-pill.red { background: rgba(255,77,94,0.14); color: var(--red); }
+  .stats-row { display: flex; gap: 10px; }
+  .stats-row .card { flex: 1; text-align: center; padding: 14px 8px; }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  .btn-log-new { padding: 20px; font-size: 18px; }
   .sheet-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.5);
     display: none; align-items: flex-end; z-index: 20;
@@ -109,7 +127,20 @@
     <button class="icon-btn" id="settings-btn" aria-label="Settings">&#9881;</button>
   </header>
   <main>
-    <section id="log-view" class="view active">
+    <section id="home-view" class="view active">
+      <div class="card hero-card">
+        <div class="hero-label">This week &middot; blended $/hr</div>
+        <div class="hero-rate" id="home-rate">$0.00</div>
+        <span class="status-pill" id="home-status">No sessions yet</span>
+      </div>
+      <div class="stats-row">
+        <div class="card"><div class="stat-value" id="home-sessions">0</div><div class="stat-label">Sessions</div></div>
+        <div class="card"><div class="stat-value" id="home-hours">0.0</div><div class="stat-label">Hours</div></div>
+        <div class="card"><div class="stat-value" id="home-net">$0.00</div><div class="stat-label">Net pay</div></div>
+      </div>
+      <button class="btn-primary btn-log-new" id="log-new-btn">+ Log New Session</button>
+    </section>
+    <section id="log-view" class="view">
       <div class="card">
         <label for="log-date">Date</label>
         <input type="date" id="log-date">
@@ -182,7 +213,8 @@
     </section>
   </main>
   <nav class="tabbar">
-    <button id="tab-log" class="active">Log</button>
+    <button id="tab-home" class="active">Home</button>
+    <button id="tab-log">Log</button>
     <button id="tab-history">History</button>
     <button id="tab-analytics">Analytics</button>
   </nav>
@@ -262,27 +294,34 @@
     }
 
     // --- TAB NAVIGATION ---
+    var tabHomeBtn = document.getElementById('tab-home');
     var tabLogBtn = document.getElementById('tab-log');
     var tabHistoryBtn = document.getElementById('tab-history');
     var tabAnalyticsBtn = document.getElementById('tab-analytics');
+    var homeView = document.getElementById('home-view');
     var logView = document.getElementById('log-view');
     var historyView = document.getElementById('history-view');
     var analyticsView = document.getElementById('analytics-view');
 
     function showTab(name) {
+      homeView.classList.toggle('active', name === 'home');
       logView.classList.toggle('active', name === 'log');
       historyView.classList.toggle('active', name === 'history');
       analyticsView.classList.toggle('active', name === 'analytics');
+      tabHomeBtn.classList.toggle('active', name === 'home');
       tabLogBtn.classList.toggle('active', name === 'log');
       tabHistoryBtn.classList.toggle('active', name === 'history');
       tabAnalyticsBtn.classList.toggle('active', name === 'analytics');
+      if (name === 'home') renderHome();
       if (name === 'history') renderHistory();
       if (name === 'analytics') renderAnalytics();
     }
 
+    tabHomeBtn.addEventListener('click', function () { showTab('home'); });
     tabLogBtn.addEventListener('click', function () { showTab('log'); });
     tabHistoryBtn.addEventListener('click', function () { showTab('history'); });
     tabAnalyticsBtn.addEventListener('click', function () { showTab('analytics'); });
+    document.getElementById('log-new-btn').addEventListener('click', function () { showTab('log'); });
 
     // --- SETTINGS SHEET ---
     var settingsBtn = document.getElementById('settings-btn');
@@ -473,6 +512,30 @@
         return (s.date + s.startTime) > (latest.date + latest.startTime) ? s : latest;
       }).date;
     })();
+
+    function renderHome() {
+      var settings = getSettings();
+      var range = DashRateCalc.getWeekRange(todayDateString());
+      var weekSessions = getSessions().filter(function (s) {
+        return s.date >= range.start && s.date <= range.end;
+      });
+      var summary = DashRateCalc.summarizeSessions(weekSessions);
+      document.getElementById('home-rate').textContent = '$' + summary.blendedRate.toFixed(2);
+      document.getElementById('home-sessions').textContent = weekSessions.length;
+      document.getElementById('home-hours').textContent = summary.totalHours.toFixed(1);
+      document.getElementById('home-net').textContent = '$' + summary.totalNet.toFixed(2);
+      var statusEl = document.getElementById('home-status');
+      if (!weekSessions.length) {
+        statusEl.className = 'status-pill';
+        statusEl.innerHTML = 'No sessions yet this week';
+      } else if (summary.blendedRate >= settings.worthItThreshold) {
+        statusEl.className = 'status-pill green';
+        statusEl.innerHTML = '<span class="flag-dot flag-green"></span>Worth it this week';
+      } else {
+        statusEl.className = 'status-pill red';
+        statusEl.innerHTML = '<span class="flag-dot flag-red"></span>Below $' + settings.worthItThreshold + '/hr';
+      }
+    }
 
     function renderSessionCard(session) {
       var result = DashRateCalc.computeSession(session);
@@ -669,6 +732,7 @@
         saveSettings(Object.assign({}, DEFAULT_SETTINGS, payload.settings || {}));
         setGistStatus('Imported ' + (payload.sessions || []).length + ' sessions.');
         fillSettingsForm();
+        renderHome();
         renderHistory();
         renderAnalytics();
         resetLogForm();
@@ -682,7 +746,7 @@
     document.getElementById('import-gist-btn').addEventListener('click', importFromGist);
 
     resetLogForm();
-    showTab('log');
+    showTab('home');
   })();
   </script>
 </body>
